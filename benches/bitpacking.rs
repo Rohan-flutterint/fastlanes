@@ -64,33 +64,65 @@ fn pack(c: &mut Criterion) {
     }
 
     {
-        let mut group = c.benchmark_group("unpack_eq");
+        let mut group = c.benchmark_group("unpack_eq_unpack");
         group.bench_function("16 <- 3 stack", |b| {
-            const WIDTH: usize = 3;
+            const WIDTH: usize = 20;
+            let values = [4u32; 1024];
+            let mut packed = [0; 128 * WIDTH / size_of::<u32>()];
+            BitPacking::pack::<WIDTH>(&values, &mut packed);
+
+            let mut unpacked = [0u32; 1024];
+            b.iter(|| black_box(BitPacking::unpack::<WIDTH>(&packed, &mut unpacked)));
+        });
+    }
+
+    {
+        let mut group = c.benchmark_group("unpack_eq_fused");
+        group.bench_function("16 <- 3 stack", |b| {
+            const WIDTH: usize = 20;
             let values = [4u32; 1024];
             let mut packed = [0; 128 * WIDTH / size_of::<u32>()];
             BitPacking::pack::<WIDTH>(&values, &mut packed);
 
             let mut unpacked = [0u32; 1024 / 32];
-            b.iter(|| black_box(BitPacking::equnpack::<WIDTH>(&packed, &mut unpacked, 1)));
+            b.iter(|| black_box(BitPacking::unpack_eq::<WIDTH>(&packed, &mut unpacked, 1)));
         });
     }
 
     {
-        let mut group = c.benchmark_group("unpack_eq_coll");
+        let mut group = c.benchmark_group("unpack_eq_collect");
         group.bench_function("16 <- 3 stack", |b| {
-            const WIDTH: usize = 3;
+            const WIDTH: usize = 20;
+            let values = [4u32; 1024];
+            let mut packed = [0; 128 * WIDTH / size_of::<u32>()];
+            BitPacking::pack::<WIDTH>(&values, &mut packed);
+
+            let mut unpacked = [0u32; 1024];
+            black_box(BitPacking::unpack::<WIDTH>(&packed, &mut unpacked));
+            b.iter(|| black_box(collect_bool_cmp(unpacked, 1)));
+        });
+    }
+
+    {
+        let mut group = c.benchmark_group("unpack_eq_unpack_collect");
+        group.bench_function("16 <- 3 stack", |b| {
+            const WIDTH: usize = 20;
             let values = [4u32; 1024];
             let mut packed = [0; 128 * WIDTH / size_of::<u32>()];
             BitPacking::pack::<WIDTH>(&values, &mut packed);
 
             let mut unpacked = [0u32; 1024];
             b.iter(|| {
-                black_box(BitPacking::unpack::<WIDTH>(&packed, &mut unpacked));
-                black_box(collect_bool(unpacked.len(), |idx| unpacked[idx] == 1))
+                BitPacking::unpack::<WIDTH>(&packed, &mut unpacked);
+                black_box(collect_bool_cmp(unpacked, 1));
             });
         });
     }
+}
+
+#[inline(never)]
+pub fn collect_bool_cmp(unpacked: [u32; 1024], cmp: u32) -> Vec<u64> {
+    collect_bool(unpacked.len(), |idx| unpacked[idx] == cmp)
 }
 
 #[inline]

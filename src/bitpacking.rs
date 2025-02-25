@@ -33,7 +33,7 @@ pub trait BitPacking: FastLanes {
     where
         BitPackWidth<W>: SupportedBitPackWidth<Self>;
 
-    fn equnpack<const W: usize>(
+    fn unpack_eq<const W: usize>(
         input: &[Self; 1024 * W / Self::T],
         output: &mut [u32; 32],
         eq_value: Self,
@@ -167,7 +167,7 @@ macro_rules! impl_packing {
                 }
 
                        #[inline(never)]
-                fn equnpack<const W: usize>(
+                fn unpack_eq<const W: usize>(
                     input: &[Self; 1024 * W / Self::T],
                    output: &mut [u32; 32],
                     eq_value: Self
@@ -205,7 +205,7 @@ macro_rules! impl_packing {
                 }
 
                 // #[inline(never)]
-                // fn equnpack<const W: usize>(
+                // fn unpack_eq<const W: usize>(
                 //     input: &[Self; 1024 * W / Self::T],
                 //    output: &mut [u16; 64],
                 //     eq_value: Self
@@ -386,9 +386,58 @@ mod test {
         BitPacking::pack::<5>(&values, &mut packed);
 
         let mut output = [0u32; 1024 / 32];
-        BitPacking::equnpack::<5>(&packed, &mut output, 4);
+        BitPacking::unpack_eq::<5>(&packed, &mut output, 4);
         for b in output.iter() {
-            println!("{:016b}", b)
+            println!("{:032b}", b)
         }
+
+        let res = unsafe { std::mem::transmute::<[u32; 32], [u64; 16]>(output) };
+        println!("res {:?}", res);
+
+        let mut unpacked = [0u32; 1024];
+        BitPacking::unpack::<5>(&packed, &mut unpacked);
+        let bools = collect_bool(unpacked.len(), |idx| unpacked[idx] == 4);
+        println!("bools {:?}", bools);
+
+        assert_eq!(res.as_slice(), bools.as_slice())
+    }
+
+    #[inline]
+    pub fn ceil(value: usize, divisor: usize) -> usize {
+        // Rewrite as `value.div_ceil(&divisor)` after
+        // https://github.com/rust-lang/rust/issues/88581 is merged.
+        value / divisor + (0 != value % divisor) as usize
+    }
+
+    #[inline]
+    pub fn collect_bool<F: FnMut(usize) -> bool>(len: usize, mut f: F) -> Vec<u64> {
+        let mut buffer = Vec::with_capacity(ceil(len, 64) * 8);
+
+        let chunks = len / 64;
+        let remainder = len % 64;
+        for chunk in 0..chunks {
+            let mut packed = 0;
+            for bit_idx in 0..64 {
+                let i = bit_idx + chunk * 64;
+                packed |= (f(i) as u64) << bit_idx;
+            }
+
+            // SAFETY: Already allocated sufficient capacity
+            buffer.push(packed)
+        }
+
+        if remainder != 0 {
+            let mut packed = 0;
+            for bit_idx in 0..remainder {
+                let i = bit_idx + chunks * 64;
+                packed |= (f(i) as u64) << bit_idx;
+            }
+
+            // SAFETY: Already allocated sufficient capacity
+            buffer.push(packed)
+        }
+
+        buffer.truncate(ceil(len, 8));
+        buffer
     }
 }

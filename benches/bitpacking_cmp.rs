@@ -23,7 +23,7 @@ fn main() {
 //
 //     let mut unpacked = [0u64; 1024 / 64];
 //     bencher.bench(|| {
-//         black_box(BitPacking::equnpack::<W>(
+//         black_box(BitPacking::unpack_eq::<W>(
 //             &packed,
 //             &mut unpacked,
 //             T::from_usize(1).unwrap(),
@@ -98,7 +98,7 @@ pub fn collect_bool<F: FnMut(usize) -> bool>(len: usize, mut f: F) -> Vec<u64> {
 //             BitPacking::pack::<WIDTH>(&values, &mut packed);
 //
 //             let mut unpacked = [0u64; 1024 / 64];
-//             b.iter(|| black_box(BitPacking::equnpack::<WIDTH>(&packed, &mut unpacked, 1)));
+//             b.iter(|| black_box(BitPacking::unpack_eq::<WIDTH>(&packed, &mut unpacked, 1)));
 //         });
 //     }
 //
