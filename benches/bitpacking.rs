@@ -35,11 +35,11 @@ fn pack(c: &mut Criterion) {
         let mut group = c.benchmark_group("unpack");
         group.bench_function("unpack 16 <- 3 stack", |b| {
             const WIDTH: usize = 3;
-            let values = [3u16; 1024];
-            let mut packed = [0; 128 * WIDTH / size_of::<u16>()];
+            let values = [3u64; 1024];
+            let mut packed = [0; 128 * WIDTH / size_of::<u64>()];
             BitPacking::pack::<WIDTH>(&values, &mut packed);
 
-            let mut unpacked = [0u16; 1024];
+            let mut unpacked = [0u64; 1024];
             b.iter(|| BitPacking::unpack::<WIDTH>(&packed, &mut unpacked));
         });
     }
@@ -67,13 +67,12 @@ fn pack(c: &mut Criterion) {
         let mut group = c.benchmark_group("unpack_eq");
         group.bench_function("16 <- 3 stack", |b| {
             const WIDTH: usize = 3;
-            let values = [3u16; 1024];
-            let mut packed = [0; 128 * WIDTH / size_of::<u16>()];
+            let values = [4u32; 1024];
+            let mut packed = [0; 128 * WIDTH / size_of::<u32>()];
             BitPacking::pack::<WIDTH>(&values, &mut packed);
 
-
             let mut unpacked = [0u64; 1024 / 64];
-            b.iter(|| BitPacking::equnpack::<WIDTH>(&packed, &mut unpacked, 1));
+            b.iter(|| black_box(BitPacking::equnpack::<WIDTH>(&packed, &mut unpacked, 1)));
         });
     }
 
@@ -81,17 +80,14 @@ fn pack(c: &mut Criterion) {
         let mut group = c.benchmark_group("unpack_eq_coll");
         group.bench_function("16 <- 3 stack", |b| {
             const WIDTH: usize = 3;
-            let values = [3u16; 1024];
-            let mut packed = [0; 128 * WIDTH / size_of::<u16>()];
+            let values = [4u32; 1024];
+            let mut packed = [0; 128 * WIDTH / size_of::<u32>()];
             BitPacking::pack::<WIDTH>(&values, &mut packed);
 
-
-            let mut unpacked = [0u16; 1024];
+            let mut unpacked = [0u32; 1024];
             b.iter(|| {
-                BitPacking::unpack::<WIDTH>(&packed, &mut unpacked);
-                collect_bool(unpacked.len(), |idx| {
-                    unpacked[idx] == 4
-                })
+                black_box(BitPacking::unpack::<WIDTH>(&packed, &mut unpacked));
+                black_box(collect_bool(unpacked.len(), |idx| unpacked[idx] == 1))
             });
         });
     }
@@ -118,7 +114,7 @@ pub fn collect_bool<F: FnMut(usize) -> bool>(len: usize, mut f: F) -> Vec<u64> {
         }
 
         // SAFETY: Already allocated sufficient capacity
-         buffer.push(packed)
+        buffer.push(packed)
     }
 
     if remainder != 0 {
@@ -129,13 +125,12 @@ pub fn collect_bool<F: FnMut(usize) -> bool>(len: usize, mut f: F) -> Vec<u64> {
         }
 
         // SAFETY: Already allocated sufficient capacity
-         buffer.push(packed)
+        buffer.push(packed)
     }
 
     buffer.truncate(ceil(len, 8));
     buffer
 }
-
 
 criterion_group!(benches, pack);
 criterion_main!(benches);

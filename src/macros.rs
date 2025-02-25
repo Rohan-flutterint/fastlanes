@@ -131,7 +131,7 @@ macro_rules! unpack {
                     __kernel__!(idx, src);
                 }));
             } else {
-                #[inline]
+                #[inline(always)]
                 fn mask(width: usize) -> $T {
                     if width == T { <$T>::MAX } else { (1 << (width % T)) - 1 }
                 }
@@ -164,9 +164,109 @@ macro_rules! unpack {
                         tmp = (src >> shift) & mask($W);
                     }
 
+
                     // Write out the unpacked value
                     let idx = index(row, $lane);
+                    println!("lane {} row {}, idx {}", $lane, row, idx);
                     __kernel__!(idx, tmp);
+                }));
+            }
+        }
+    };
+}
+
+// ($T:ty, $W:expr, $packed:expr, $lane:expr, | $_1:tt $idx:ident, $_2:tt $elem:ident | $($body:tt)*) => {
+// macro_rules! __kernel__ {( $_1 $idx:ident, $_2 $elem:ident ) => ( $($body)* )}
+
+#[macro_export]
+macro_rules! unpack2 {
+    ($T:ty, $W:expr, $packed:expr, $lanes:ident, | $_1:tt $llane:ident, $_2:tt $row:ident, $_3:tt $idx:ident, $_4:tt $elem:ident | $($body:tt)*) => {
+        macro_rules! __kernel__ {( $_1 $llane:ident, $_2 $row:ident, $_3 $idx:ident, $_4 $elem:ident ) => ( $($body)* )}
+        {
+            use $crate::{seq_t };
+            use paste::paste;
+
+            // The number of bits of T.
+            const T: usize = <$T>::T;
+
+            #[inline(always)]
+            fn index(row: usize, lane: usize) -> usize {
+                let o = row / 8;
+                let s = row % 8;
+                (FL_ORDER[o] * 16) + (s * 128) + lane
+            }
+
+            #[inline(always)]
+            fn id2(row: usize) -> usize {
+                row
+            }
+
+            if $W == 0 {
+                // Special case for W=0, we just need to zero the output.
+                // We'll still respect the iteration order in case the kernel has side effects.
+                paste!(seq_t!(row in $T {
+                    for lane in 0..$lanes {
+                        let idx = index(row, lane);
+                        let zero: $T = 0;
+                        let roww = id2(row);
+                        let lanew = id2(lane);
+                        __kernel__!(lanew, roww, idx, zero);
+                    }
+                }));
+            } else if $W == T {
+                // Special case for W=T, we can just copy the packed value directly to the output.
+                paste!(seq_t!(row in $T {
+                    for lane in 0..$lanes {
+                        let idx = index(row, lane);
+                        let src = $packed[<$T>::LANES * row + lane];
+                        let roww = id2(row);
+                        let lanew = id2(lane);
+                        __kernel__!(lanew, roww, idx, src);
+                    }
+                }));
+            } else {
+                #[inline]
+                fn mask(width: usize) -> $T {
+                    if width == T { <$T>::MAX } else { (1 << (width % T)) - 1 }
+                }
+
+
+                paste!(seq_t!(row in $T {
+                    for lane in 0..<$T>::LANES {
+                        let mut tmp: $T;
+
+                        // Figure out the packed positions
+                        let curr_word: usize = (row * $W) / T;
+                        let next_word = ((row + 1) * $W) / T;
+
+                        let src = $packed[<$T>::LANES * curr_word + lane];
+
+                        let shift = (row * $W) % T;
+
+                        if next_word > curr_word {
+                            // Consume some bits from the curr packed input, the remainder are in the next
+                            // packed input value
+                            let remaining_bits = ((row + 1) * $W) % T;
+                            let current_bits = $W - remaining_bits;
+                            tmp = (src >> shift) & mask(current_bits);
+
+                            if next_word < $W {
+                                // Load the next packed value
+                                let src = $packed[<$T>::LANES * next_word + lane];
+                                // Consume the remaining bits from the next input value.
+                                tmp |= (src & mask(remaining_bits)) << current_bits;
+                            }
+                        } else {
+                            // Otherwise, just grab W bits from the src value
+                            tmp = (src >> shift) & mask($W);
+                        }
+
+                        // Write out the unpacked value
+                        let idx = index(row, lane);
+                        let roww = id2(row);
+                        let lanew = id2(lane);
+                        __kernel__!(lanew, roww, idx, tmp);
+                    }
                 }));
             }
         }

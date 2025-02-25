@@ -36,8 +36,9 @@ pub trait BitPacking: FastLanes {
     fn equnpack<const W: usize>(
         input: &[Self; 1024 * W / Self::T],
         output: &mut [u64; 16],
-        eq_value: Self
-    ) where BitPackWidth<W>: SupportedBitPackWidth<Self>;
+        eq_value: Self,
+    ) where
+        BitPackWidth<W>: SupportedBitPackWidth<Self>;
 
     /// Unpacks 1024 elements from `W` bits each, where `W` is runtime-known instead of
     /// compile-time known.
@@ -165,27 +166,83 @@ macro_rules! impl_packing {
                     }
                 }
 
-                #[inline(never)]
+                       #[inline(never)]
                 fn equnpack<const W: usize>(
                     input: &[Self; 1024 * W / Self::T],
-                    output: &mut [u64; 16],
+                   output: &mut [u64; 16],
                     eq_value: Self
                 ) where BitPackWidth<W>: SupportedBitPackWidth<Self> {
                     for lane in 0..Self::LANES {
+
+                        //             #[inline(always)]
+                        //             fn index(row: usize, lane: usize) -> usize {
+                        //                 let o = row / 8;
+                        //                 let s = row % 8;
+                        //                 (FL_ORDER[o] * 16) + (s * 128) + lane
+                        //             }
+
                         unpack!($T, W, input, lane, |$idx, $elem| {
                             // idx % 64
-                            let bool_idx = $idx & 0x000F;
-                            let bool_bit = $idx / 64;
+                            // let bool_idx = $idx / 64;
 
+                            // let lane = $llane;
+                            let bool_idx = $idx / 64;
+                            let bool_bit = $idx % 64;
+                            //
+                            //
+                            // let _ = idx;
+                            // // println!("bool_bit {}", bool_bit);
+                            // println!("lane {}, row {}, idx {} value {}", lane, $row, $idx, $elem);
                             // println!("idx {}, bool_idx {}, bool_bit {}", $idx, bool_idx, bool_bit);
-                            // println!("bool_bit {}", bool_bit);
-
+                            //
+                            // // let _ = $elem;
+                            // let _ = $row;
+                            //
                             let value = $elem == eq_value;
-
                             output[bool_idx] |= (value as u64) << bool_bit;
                         });
                     }
                 }
+
+                // #[inline(never)]
+                // fn equnpack<const W: usize>(
+                //     input: &[Self; 1024 * W / Self::T],
+                //    output: &mut [u16; 64],
+                //     eq_value: Self
+                // ) where BitPackWidth<W>: SupportedBitPackWidth<Self> {
+                //     // for lane in 0..Self::LANES {
+                //
+                //         //             #[inline(always)]
+                //         //             fn index(row: usize, lane: usize) -> usize {
+                //         //                 let o = row / 8;
+                //         //                 let s = row % 8;
+                //         //                 (FL_ORDER[o] * 16) + (s * 128) + lane
+                //         //             }
+                //         let lanes = Self::LANES;
+                //
+                //         unpack2!($T, W, input, lanes, |$llane, $row, $idx, $elem| {
+                //             // idx % 64
+                //             // let bool_idx = $idx / 64;
+                //
+                //             let lane = $llane;
+                //             let o = $row / 8;
+                //             let s = $row % 8;
+                //             let bool_idx = (((FL_ORDER[o] * 16) + (s * 128)) + lane) / 16;
+                //             let bool_bit = lane % 16;
+                //
+                //
+                //             let _ = $idx;
+                //             // println!("bool_bit {}", bool_bit);
+                //             // println!("lane {}, row {}, idx {} value {}", lane, $row, $idx, $elem);
+                //             // println!("idx {}, bool_idx {}, bool_bit {}", $idx, bool_idx, bool_bit);
+                //
+                //             // let _ = $elem;
+                //             let _ = $row;
+                //
+                //             let value = $elem == eq_value;
+                //             output[bool_idx] |= (value as u16) << bool_bit;
+                //         });
+                // }
 
 
                 unsafe fn unchecked_unpack(width: usize, input: &[Self], output: &mut [Self]) {
@@ -321,18 +378,16 @@ mod test {
     seq!(W in 0..=32 { impl_try_round_trip!(u32, W); });
     seq!(W in 0..=64 { impl_try_round_trip!(u64, W); });
 
-
     #[test]
     fn test_unpack_eq() {
-        let values = array::from_fn(|i| i as u32);
+        let values = array::from_fn(|i| i as u16 % 16);
         println!("values {:?}", values);
-        let mut packed = [0; 512];
-        BitPacking::pack::<16>(&values, &mut packed);
+        let mut packed = [0u16; 320];
+        BitPacking::pack::<5>(&values, &mut packed);
 
-
-        let  mut output = [0u64; 1024/64];
-        BitPacking::unpack_eq::<16>(&packed, &mut output, 4);
-        for b in output.iter(){
+        let mut output = [0u64; 1024 / 64];
+        BitPacking::equnpack::<5>(&packed, &mut output, 4);
+        for b in output.iter() {
             println!("{:016b}", b)
         }
     }
