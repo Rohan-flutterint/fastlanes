@@ -71,7 +71,7 @@ fn pack(c: &mut Criterion) {
             let mut packed = [0; 128 * WIDTH / size_of::<u32>()];
             BitPacking::pack::<WIDTH>(&values, &mut packed);
 
-            let mut unpacked = [0u64; 1024 / 64];
+            let mut unpacked = [0u32; 1024 / 32];
             b.iter(|| black_box(BitPacking::equnpack::<WIDTH>(&packed, &mut unpacked, 1)));
         });
     }

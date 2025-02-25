@@ -35,7 +35,7 @@ pub trait BitPacking: FastLanes {
 
     fn equnpack<const W: usize>(
         input: &[Self; 1024 * W / Self::T],
-        output: &mut [u64; 16],
+        output: &mut [u32; 32],
         eq_value: Self,
     ) where
         BitPackWidth<W>: SupportedBitPackWidth<Self>;
@@ -169,7 +169,7 @@ macro_rules! impl_packing {
                        #[inline(never)]
                 fn equnpack<const W: usize>(
                     input: &[Self; 1024 * W / Self::T],
-                   output: &mut [u64; 16],
+                   output: &mut [u32; 32],
                     eq_value: Self
                 ) where BitPackWidth<W>: SupportedBitPackWidth<Self> {
                     for lane in (0..Self::LANES){
@@ -186,8 +186,8 @@ macro_rules! impl_packing {
                             // let bool_idx = $idx / 64;
 
                             // let lane = $llane;
-                            let bool_idx = $idx / 64;
-                            let bool_bit = $idx % 64;
+                            let bool_idx = $idx / 32;
+                            let bool_bit = $idx % 32;
                             //
                             //
                             // let _ = idx;
@@ -199,7 +199,7 @@ macro_rules! impl_packing {
                             // let _ = $row;
                             //
                             let value = $elem == eq_value;
-                            output[bool_idx] |= (value as u64) << bool_bit;
+                            output[bool_idx] |= (value as u32) << bool_bit;
                         });
                     }
                 }
@@ -385,7 +385,7 @@ mod test {
         let mut packed = [0u32; (1024 * 5) / u32::T];
         BitPacking::pack::<5>(&values, &mut packed);
 
-        let mut output = [0u64; 1024 / 64];
+        let mut output = [0u32; 1024 / 32];
         BitPacking::equnpack::<5>(&packed, &mut output, 4);
         for b in output.iter() {
             println!("{:016b}", b)

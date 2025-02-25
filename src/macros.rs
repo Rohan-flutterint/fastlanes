@@ -167,7 +167,7 @@ macro_rules! unpack {
 
                     // Write out the unpacked value
                     let idx = index(row, $lane);
-                    println!("lane {} row {}, idx {}", $lane, row, idx);
+                    // println!("lane {} row {}, idx {}", $lane, row, idx);
                     __kernel__!(idx, tmp);
                 }));
             }
