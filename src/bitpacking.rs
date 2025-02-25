@@ -172,7 +172,7 @@ macro_rules! impl_packing {
                    output: &mut [u64; 16],
                     eq_value: Self
                 ) where BitPackWidth<W>: SupportedBitPackWidth<Self> {
-                    for lane in 0..Self::LANES {
+                    for lane in (0..Self::LANES){
 
                         //             #[inline(always)]
                         //             fn index(row: usize, lane: usize) -> usize {
@@ -380,9 +380,9 @@ mod test {
 
     #[test]
     fn test_unpack_eq() {
-        let values = array::from_fn(|i| i as u16 % 16);
+        let values = array::from_fn(|i| i as u32 % 16);
         println!("values {:?}", values);
-        let mut packed = [0u16; 320];
+        let mut packed = [0u32; (1024 * 5) / u32::T];
         BitPacking::pack::<5>(&values, &mut packed);
 
         let mut output = [0u64; 1024 / 64];

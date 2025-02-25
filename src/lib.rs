@@ -46,6 +46,14 @@ macro_rules! seq_t {
     ($ident:ident in u64 $body:tt) => {seq_macro::seq!($ident in 0..64 $body)};
 }
 
+#[macro_export]
+macro_rules! seq_t_split {
+    ($ident:ident in u8 $body:tt) => {seq_macro::seq!($ident in 0..4 $body)};
+    ($ident:ident in u16 $body:tt) => {seq_macro::seq!($ident in 0..16 $body)};
+    ($ident:ident in u32 $body:tt) => {seq_macro::seq!($ident in 0..16 $body)};
+    ($ident:ident in u64 $body:tt) => {seq_macro::seq!($ident in 0..32 $body)};
+}
+
 #[cfg(test)]
 mod test {
     use crate::FL_ORDER;
