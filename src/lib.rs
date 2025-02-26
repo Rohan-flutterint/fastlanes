@@ -50,6 +50,44 @@ macro_rules! seq_t {
     ($ident:ident in u64 $body:tt) => {seq_macro::seq!($ident in 0..64 $body)};
 }
 
+pub trait FastLanesComparable: Copy {
+    type Bitpacked: FastLanes;
+
+    fn _as_original(inner: Self::Bitpacked) -> Self;
+}
+
+impl FastLanesComparable for u32 {
+    type Bitpacked = u32;
+
+    fn _as_original(inner: Self::Bitpacked) -> Self {
+        inner
+    }
+}
+
+impl FastLanesComparable for i32 {
+    type Bitpacked = u32;
+
+    fn _as_original(inner: Self::Bitpacked) -> Self {
+        unsafe { core::mem::transmute(inner) }
+    }
+}
+
+impl FastLanesComparable for u64 {
+    type Bitpacked = u64;
+
+    fn _as_original(inner: Self::Bitpacked) -> Self {
+        inner
+    }
+}
+
+impl FastLanesComparable for i64 {
+    type Bitpacked = u64;
+
+    fn _as_original(inner: Self::Bitpacked) -> Self {
+        unsafe { core::mem::transmute(inner) }
+    }
+}
+
 // run the example code in the README as a test
 #[doc = include_str!("../README.md")]
 #[cfg(doctest)]

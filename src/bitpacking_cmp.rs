@@ -1,24 +1,26 @@
-use crate::FastLanes;
 use crate::{BitPackWidth, BitPacking, SupportedBitPackWidth};
+use crate::{FastLanes, FastLanesComparable};
 use core::ptr;
 
 pub trait BitPackingCompare: BitPacking {
-    fn unpack_cmp_impl<const W: usize, F: Fn(Self, Self) -> bool>(
+    fn unpack_cmp_impl<const W: usize, V, F: Fn(V, V) -> bool>(
         input: &[Self; 1024 * W / Self::T],
         output: &mut [Self; 1024 / Self::T],
         f: F,
-        eq_value: Self,
+        eq_value: V,
     ) where
-        BitPackWidth<W>: SupportedBitPackWidth<Self>;
+        BitPackWidth<W>: SupportedBitPackWidth<Self>,
+        V: FastLanesComparable<Bitpacked = Self>;
 
     #[inline(never)]
-    fn unpack_cmp<const W: usize, F: Fn(Self, Self) -> bool>(
+    fn unpack_cmp<const W: usize, V, F: Fn(V, V) -> bool>(
         input: &[Self; 1024 * W / Self::T],
         output: &mut [u64; 16],
         comparison: F,
-        value: Self,
+        value: V,
     ) where
         BitPackWidth<W>: SupportedBitPackWidth<Self>,
+        V: FastLanesComparable<Bitpacked = Self>,
         [(); 1024 / Self::T]:, // [(); 1024 * W / Self::T]:,
     {
         // The number of bits in the output == number of bits in the new_output.
@@ -37,13 +39,14 @@ pub trait BitPackingCompare: BitPacking {
     /// The input slice must be of length `1024 * W / T`, where `T` is the bit-width of Self and `W`
     /// is the packed width. The output slice must be of exactly length `[u64; 16]` (`1024` bits).
     /// These lengths are checked only with `debug_assert` (i.e., not checked on release builds).
-    unsafe fn unchecked_unpack_cmp<F: Fn(Self, Self) -> bool>(
+    unsafe fn unchecked_unpack_cmp<V, F: Fn(V, V) -> bool>(
         width: usize,
         input: &[Self],
         output: &mut [u64; 16],
         comparison: F,
-        value: Self,
-    );
+        value: V,
+    ) where
+        V: FastLanesComparable<Bitpacked = Self>;
 }
 
 macro_rules! impl_packing_compare {
@@ -51,29 +54,32 @@ macro_rules! impl_packing_compare {
         paste::paste! {
             impl BitPackingCompare for $T {
                #[inline(always)]
-                fn unpack_cmp_impl<const W: usize, F: Fn(Self, Self) -> bool>(
+                fn unpack_cmp_impl<const W: usize, V, F: Fn(V, V) -> bool>(
                     input: &[Self; 1024 * W / Self::T],
                     output: &mut [Self; 1024 / Self::T],
                     f: F,
-                    other: Self,
-                ) where BitPackWidth<W>: SupportedBitPackWidth<Self> {
+                    other: V,
+                ) where
+                   BitPackWidth<W>: SupportedBitPackWidth<Self>,
+                   V: FastLanesComparable<Bitpacked = Self>
+                {
                     for lane in (0..Self::LANES){
                         $crate::unpack!($T, W, input, lane, |$idx, $elem| {
                             let bool_idx = $idx / Self::T;
                             let bool_bit = $idx % Self::T;
-                            let value = f($elem, other);
+                            let value = f(V::_as_original($elem), other);
                             output[bool_idx] |= (num_traits::AsPrimitive::<Self>::as_(value)) << bool_bit;
                         });
                     }
-                }
+                 }
 
-               unsafe fn unchecked_unpack_cmp<F: Fn(Self, Self) -> bool>(
+               unsafe fn unchecked_unpack_cmp<V, F: Fn(V, V) -> bool>(
                     width: usize,
                     input: &[Self],
                     output: &mut [u64; 16],
                     comparison: F,
-                    value: Self,
-               )
+                    value: V,
+               ) where V: FastLanesComparable<Bitpacked=Self>,
                {
                    let packed_len = 128 * width / size_of::<Self>();
                    debug_assert_eq!(input.len(), packed_len, "Input buffer must be of size 1024 * W / T");
@@ -81,7 +87,7 @@ macro_rules! impl_packing_compare {
 
                    $crate::seq_t!(W in $T {
                         match width {
-                            #(W => Self::unpack_cmp::<W, F>(
+                            #(W => Self::unpack_cmp::<W, V, F>(
                                 arrayref::array_ref![input, 0, 1024 * W / <$T>::T],
                                 output,
                                 comparison,
@@ -120,14 +126,14 @@ mod tests {
 
         let cmp = {
             let mut output = [0u64; 16];
-            T::unpack_cmp::<W, _>(&packed, &mut output, |a, b| a == b, 4);
+            T::unpack_cmp::<W, _, _>(&packed, &mut output, |a, b| a == b, 4);
             output
         };
 
         let cmp_unchecked = {
             let mut output = [0u64; 16];
             unsafe {
-                T::unchecked_unpack_cmp::<_>(W, &packed, &mut output, |a, b| a == b, 4);
+                T::unchecked_unpack_cmp::<_, _>(W, &packed, &mut output, |a, b| a == b, 4);
             }
             output
         };
