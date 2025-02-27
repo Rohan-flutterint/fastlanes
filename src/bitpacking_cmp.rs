@@ -59,7 +59,7 @@ macro_rules! impl_packing_compare {
                 ) where BitPackWidth<W>: SupportedBitPackWidth<Self> {
                     // for lane in 0..Self::LANES/4 {
                     //     $crate::unpack!($T, W, input, lane, |$idx, $elem| {
-                    for lane in 0..Self::LANES/8 {
+                    for lane in 0..Self::LANES/4 {
                         $crate::unpack2!($T, W, input, lane, |$idx, $elem| {
                             let bool_idx = $idx / Self::T;
                             let bool_bit = $idx % Self::T;
