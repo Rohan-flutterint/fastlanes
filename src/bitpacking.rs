@@ -95,6 +95,7 @@ macro_rules! impl_packing {
                     })
                 }
 
+                #[inline(never)]
                 fn unpack<const W: usize>(
                     input: &[Self; 1024 * W / Self::T],
                     output: &mut [Self; 1024],
@@ -106,6 +107,7 @@ macro_rules! impl_packing {
                     }
                 }
 
+                #[inline(never)]
                 unsafe fn unchecked_unpack(width: usize, input: &[Self], output: &mut [Self]) {
                     let packed_len = 128 * width / size_of::<Self>();
                     debug_assert_eq!(input.len(), packed_len, "Input buffer must be of size 1024 * W / T");

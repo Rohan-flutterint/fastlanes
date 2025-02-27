@@ -173,6 +173,176 @@ macro_rules! unpack {
     };
 }
 
+#[macro_export]
+macro_rules! unpack2 {
+    ($T:ty, $W:expr, $packed:expr, $lane:expr, | $_1:tt $idx:ident, $_2:tt $elem:ident | $($body:tt)*) => {
+        macro_rules! __kernel__ {( $_1 $idx:ident, $_2 $elem:ident ) => ( $($body)* )}
+        {
+            use $crate::{seq_t, FL_ORDER};
+            use paste::paste;
+
+            // The number of bits of T.
+            const T: usize = <$T>::T;
+
+            #[inline(always)]
+            fn index(row: usize, lane: usize) -> usize {
+                let o = row / 8;
+                let s = row % 8;
+                (FL_ORDER[o] * 16) + (s * 128) + lane
+            }
+
+
+                #[inline(always)]
+                fn mask(width: usize) -> $T {
+                    if width == T { <$T>::MAX } else { (1 << (width % T)) - 1 }
+                }
+
+                let lane = 4 * $lane;
+
+                let mut src: $T = $packed[lane];
+                let mut tmp: $T;
+
+                paste!(seq_t!(row in $T {
+                    // Figure out the packed positions
+                    let curr_word: usize = (row * $W) / T;
+                    let next_word = ((row + 1) * $W) / T;
+
+                    let shift = (row * $W) % T;
+
+                    if next_word > curr_word {
+                        // Consume some bits from the curr packed input, the remainder are in the next
+                        // packed input value
+                        let remaining_bits = ((row + 1) * $W) % T;
+                        let current_bits = $W - remaining_bits;
+                        tmp = (src >> shift) & mask(current_bits);
+
+                        if next_word < $W {
+                            // Load the next packed value
+                            src = $packed[<$T>::LANES * next_word + lane];
+                            // Consume the remaining bits from the next input value.
+                            tmp |= (src & mask(remaining_bits)) << current_bits;
+                        }
+                    } else {
+                        // Otherwise, just grab W bits from the src value
+                        tmp = (src >> shift) & mask($W);
+                    }
+
+                    // Write out the unpacked value
+                    let idx = index(row, lane);
+                    // println!("$lane {}, lane {}, row {}, cw {}, idx {}", $lane, lane, row, curr_word, idx);
+                    __kernel__!(idx, tmp);
+                }));
+
+
+                // let lane = $lane + (size_of::<$T>() * 8);
+                let lane = (4 * $lane) + 1;
+                let mut src: $T = $packed[lane];
+                let mut tmp: $T;
+                paste!(seq_t!(row in $T {
+                    // Figure out the packed positions
+                    let curr_word: usize = (row * $W) / T;
+                    let next_word = ((row + 1) * $W) / T;
+
+                    let shift = (row * $W) % T;
+
+                    if next_word > curr_word {
+                        // Consume some bits from the curr packed input, the remainder are in the next
+                        // packed input value
+                        let remaining_bits = ((row + 1) * $W) % T;
+                        let current_bits = $W - remaining_bits;
+                        tmp = (src >> shift) & mask(current_bits);
+
+                        if next_word < $W {
+                            // Load the next packed value
+                            src = $packed[<$T>::LANES * next_word + lane];
+                            // Consume the remaining bits from the next input value.
+                            tmp |= (src & mask(remaining_bits)) << current_bits;
+                        }
+                    } else {
+                        // Otherwise, just grab W bits from the src value
+                        tmp = (src >> shift) & mask($W);
+                    }
+
+
+                    // Write out the unpacked value
+                    let idx = index(row, lane);
+                    // println!("$lane {}, lane {}, row {}, cw {}, idx {}", $lane, lane, row, curr_word, idx);
+                    __kernel__!(idx, tmp);
+                }));
+
+            let lane = (4 * $lane) + 2;
+                let mut src: $T = $packed[lane];
+                let mut tmp: $T;
+                paste!(seq_t!(row in $T {
+                    // Figure out the packed positions
+                    let curr_word: usize = (row * $W) / T;
+                    let next_word = ((row + 1) * $W) / T;
+
+                    let shift = (row * $W) % T;
+
+                    if next_word > curr_word {
+                        // Consume some bits from the curr packed input, the remainder are in the next
+                        // packed input value
+                        let remaining_bits = ((row + 1) * $W) % T;
+                        let current_bits = $W - remaining_bits;
+                        tmp = (src >> shift) & mask(current_bits);
+
+                        if next_word < $W {
+                            // Load the next packed value
+                            src = $packed[<$T>::LANES * next_word + lane];
+                            // Consume the remaining bits from the next input value.
+                            tmp |= (src & mask(remaining_bits)) << current_bits;
+                        }
+                    } else {
+                        // Otherwise, just grab W bits from the src value
+                        tmp = (src >> shift) & mask($W);
+                    }
+
+
+                    // Write out the unpacked value
+                    let idx = index(row, lane);
+                    // println!("$lane {}, lane {}, row {}, cw {}, idx {}", $lane, lane, row, curr_word, idx);
+                    __kernel__!(idx, tmp);
+                }));
+
+            let lane = (4 * $lane) + 3;
+                let mut src: $T = $packed[lane];
+                let mut tmp: $T;
+                paste!(seq_t!(row in $T {
+                    // Figure out the packed positions
+                    let curr_word: usize = (row * $W) / T;
+                    let next_word = ((row + 1) * $W) / T;
+
+                    let shift = (row * $W) % T;
+
+                    if next_word > curr_word {
+                        // Consume some bits from the curr packed input, the remainder are in the next
+                        // packed input value
+                        let remaining_bits = ((row + 1) * $W) % T;
+                        let current_bits = $W - remaining_bits;
+                        tmp = (src >> shift) & mask(current_bits);
+
+                        if next_word < $W {
+                            // Load the next packed value
+                            src = $packed[<$T>::LANES * next_word + lane];
+                            // Consume the remaining bits from the next input value.
+                            tmp |= (src & mask(remaining_bits)) << current_bits;
+                        }
+                    } else {
+                        // Otherwise, just grab W bits from the src value
+                        tmp = (src >> shift) & mask($W);
+                    }
+
+
+                    // Write out the unpacked value
+                    let idx = index(row, lane);
+                    // println!("$lane {}, lane {}, row {}, cw {}, idx {}", $lane, lane, row, curr_word, idx);
+                    __kernel__!(idx, tmp);
+                }));
+            }
+    };
+}
+
 #[cfg(test)]
 mod test {
     use crate::{BitPacking, FastLanes};

@@ -1,6 +1,6 @@
 #![allow(incomplete_features)]
 #![feature(generic_const_exprs)]
-#![no_std]
+// #![no_std]
 
 extern crate alloc;
 extern crate core;
@@ -48,6 +48,13 @@ macro_rules! seq_t {
     ($ident:ident in u16 $body:tt) => {seq_macro::seq!($ident in 0..16 $body)};
     ($ident:ident in u32 $body:tt) => {seq_macro::seq!($ident in 0..32 $body)};
     ($ident:ident in u64 $body:tt) => {seq_macro::seq!($ident in 0..64 $body)};
+}
+#[macro_export]
+macro_rules! seq_t2 {
+    ($ident:ident in u8 $body:tt) => {seq_macro::seq!($ident in 0..4 $body)};
+    ($ident:ident in u16 $body:tt) => {seq_macro::seq!($ident in 0..8 $body)};
+    ($ident:ident in u32 $body:tt) => {seq_macro::seq!($ident in 0..16 $body)};
+    ($ident:ident in u64 $body:tt) => {seq_macro::seq!($ident in 0..32 $body)};
 }
 
 // run the example code in the README as a test
