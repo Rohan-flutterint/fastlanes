@@ -339,7 +339,6 @@ macro_rules! unpack2 {
                     // println!("$lane {}, lane {}, row {}, cw {}, idx {}", $lane, lane, row, curr_word, idx);
                     __kernel__!(idx, tmp);
                 }));
-            }
 
                         let lane = (8 * $lane) + 4;
 
@@ -483,6 +482,7 @@ macro_rules! unpack2 {
                     // println!("$lane {}, lane {}, row {}, cw {}, idx {}", $lane, lane, row, curr_word, idx);
                     __kernel__!(idx, tmp);
                 }));
+    }
     };
 }
 
