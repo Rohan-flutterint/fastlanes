@@ -13,7 +13,7 @@ pub trait BitPackingCompare: FastLanes {
         value: V,
     ) where
         BitPackWidth<W>: SupportedBitPackWidth<Self>,
-        V: FastLanesComparable<Bitpacked = Self> + std::fmt::Display,
+        V: FastLanesComparable<Bitpacked = Self>,
         F: Fn(V, V) -> bool,
         [(); 1024 / Self::T]:;
 
@@ -30,7 +30,7 @@ pub trait BitPackingCompare: FastLanes {
         comparison: F,
         value: V,
     ) where
-        V: FastLanesComparable<Bitpacked = Self> + std::fmt::Display,
+        V: FastLanesComparable<Bitpacked = Self>,
         F: Fn(V, V) -> bool;
 }
 
@@ -38,7 +38,7 @@ macro_rules! impl_packing_compare {
     ($T:ty) => {
         paste::paste! {
             impl BitPackingCompare for $T {
-                // #[inline(never)]
+                #[inline(always)]
                 fn unpack_cmp<const W: usize, V, F>(
                     input: &[Self; 1024 * W / Self::T],
                     output: &mut [bool; 1024],
@@ -47,7 +47,7 @@ macro_rules! impl_packing_compare {
                 )
                 where
                     BitPackWidth<W>: SupportedBitPackWidth<Self>,
-                    V: FastLanesComparable<Bitpacked = Self> + std::fmt::Display,
+                    V: FastLanesComparable<Bitpacked = Self> ,
                     F: Fn(V, V) -> bool
                 {
                     for lane in (0..Self::LANES) {
@@ -58,6 +58,7 @@ macro_rules! impl_packing_compare {
                     }
                 }
 
+                #[inline(always)]
                 unsafe fn unchecked_unpack_cmp<V, F>(
                      width: usize,
                      input: &[Self],
@@ -66,7 +67,7 @@ macro_rules! impl_packing_compare {
                      value: V,
                 )
                 where
-                    V: FastLanesComparable<Bitpacked = Self> + std::fmt::Display,
+                    V: FastLanesComparable<Bitpacked = Self>,
                     F: Fn(V, V) -> bool
                 {
                     let packed_len = 128 * width / size_of::<Self>();
