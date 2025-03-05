@@ -16,7 +16,7 @@ mod bench {
     use std::fmt::{Debug, Display};
 
     // const BENCH_W: [usize; 3] = [8, 1024, 1024 * 128, 1024 * 1024];
-    const BENCH_W: [usize; 3] = [1, 8, 16];
+    const BENCH_W: [usize; 5] = [1, 8, 16, 1024, 8 * 1024];
 
     #[divan::bench(types=[u8, u16, u32, u64], consts = BENCH_W)]
     fn bitpacking_cmp_fused<T: Debug, const NN: usize>(bencher: Bencher)
